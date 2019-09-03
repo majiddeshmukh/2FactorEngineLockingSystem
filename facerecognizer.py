@@ -7,12 +7,32 @@ import serial
 port= "/dev/ttyACM0"
 GPIO.setmode(GPIO.BCM)
 GPIO.setwarnings(False)
-GPIO.setup(18,GPIO.OUT)
+GPIO.setup(18, GPIO.OUT)
 recognizer = cv2.face.createLBPHFaceRecognizer()
 recognizer.load('trainer/trainer.yml')
 cascadePath = "Cascades/haarcascade_frontalface_default.xml"
 faceCascade = cv2.CascadeClassifier(cascadePath);
 font = cv2.FONT_HERSHEY_SIMPLEX
+servoPIN = 17
+GPIO.setup(servoPIN, GPIO.OUT)
+p = GPIO.PWM(servoPIN, 50) # GPIO 17 for PWM with 50Hz
+
+def engineunlocker():
+    
+    
+    
+    p.start(2.5) # Initialization
+    try:
+      while True:
+        p.ChangeDutyCycle(5)
+        time.sleep(0.5)
+        p.ChangeDutyCycle(7.5)
+        time.sleep(0.5)
+        alcoholcheck()
+    except KeyboardInterrupt:
+      p.stop()
+      GPIO.cleanup()
+
 def alcoholcheck():
     s1=serial.Serial(port,115200)
     s1.flushInput()
@@ -20,11 +40,22 @@ def alcoholcheck():
     while True:
         if s1.inWaiting()>0:
             inputValue= s1.readline()
-            print(inputValue)
+            res = [int(i) for i in inputValue.split() if i.isdigit()]
+            print(str(res))
+            for i in res:
+                 if i<200:
+                     print("Engine Unlocked! Drive Safely")
+                     engineunlocker()
+                 else:
+                     print("You are not in a condition to drive!")
+                     exit()
+
+
+
 #iniciate id counter
 id = 0
 # names related to ids: example ==> Marcelo: id=1,  etc
-names = ['None', 'Majid', '', 'Ilza', 'Z', 'W'] 
+names = ['None', 'Majid', 'Pratiksha', '', '', ''] 
 # Initialize and start realtime video capture
 cam = cv2.VideoCapture(0)
 cam.set(3, 640) # set video widht
@@ -50,6 +81,8 @@ while True:
         if (confidence < 100):
             id = names[id]
             confidence = "  {0}%".format(round(100 - confidence))
+            print("Welcome! " +id)
+            time.sleep(3)
             cam.release()
             cv2.destroyAllWindows()
             alcoholcheck()
@@ -66,7 +99,6 @@ while True:
     if k == 27:
         break
 
-    
 # Do a bit of cleanup
 print("\n [INFO] Exiting Program and cleanup stuff")
 cam.release()
